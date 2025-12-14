@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>三人排雷游戏</title>
+<style>
+  body{
+    background:#1f1f1f;
+    color:#fff;
+    font-family:Arial;
+    text-align:center;
+    padding:30px;
+  }
+  #grid{
+    display:grid;
+    grid-template:repeat(3,90px)/repeat(3,90px);
+    gap:10px;
+    margin:25px auto;
+  }
+  .cell{
+    width:90px;height:90px;
+    background:#444;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:30px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .hidden{background:#444;}
+  .revealed{background:#666;cursor:default;}
+  #status{font-size:20px;margin-top:15px;}
+  button{
+    margin-top:20px;
+    padding:10px 20px;
+    font-size:16px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<h1>💣 三人排雷游戏</h1>
+
+<div id="grid"></div>
+<div id="status"></div>
+<button onclick="init()">重新开始</button>
+
+<audio id="clickSnd" src="https://actions.google.com/sounds/v1/ui/click.ogg"></audio>
+<audio id="boomSnd" src="https://actions.google.com/sounds/v1/explosions/explosion.ogg"></audio>
+
+<script>
+const grid = document.getElementById("grid");
+const status = document.getElementById("status");
+const clickSnd = document.getElementById("clickSnd");
+const boomSnd = document.getElementById("boomSnd");
+
+let bombs = {};          // 每个玩家的炸弹位置
+let alivePlayers = [1,2,3];
+let currentPlayer = 1;
+let stage = "place";    // place / play / end
+let placedCount = 0;
+
+function init(){
+  grid.innerHTML="";
+  bombs={};
+  alivePlayers=[1,2,3];
+  currentPlayer=1;
+  placedCount=0;
+  stage="place";
+  status.textContent="放置炸弹：玩家 1";
+  for(let i=0;i<9;i++){
+    const cell=document.createElement("div");
+    cell.className="cell hidden";
+    cell.dataset.index=i;
+    cell.onclick=()=>cellClick(cell);
+    grid.appendChild(cell);
+  }
+}
+
+function cellClick(cell){
+  if(stage==="end") return;
+  const idx=parseInt(cell.dataset.index);
+  clickSnd.play();
+
+  if(stage==="place"){
+    if(bombs[currentPlayer]!==undefined){
+      alert("你已经放过炸弹了！");
+      return;
+    }
+    bombs[currentPlayer]=idx;
+    cell.textContent="💣";
+    cell.className="cell revealed";
+    placedCount++;
+
+    if(placedCount<3){
+      currentPlayer++;
+      status.textContent=放置炸弹：玩家 ${currentPlayer};
+    }else{
+      // 开始排雷
+      stage="play";
+      currentPlayer=alivePlayers[0];
+      status.textContent=排雷阶段：玩家 ${currentPlayer};
+      document.querySelectorAll(".cell").forEach(c=>{
+        c.textContent="";
+        c.className="cell hidden";
+      });
+    }
+  }else if(stage==="play"){
+    if(cell.classList.contains("revealed")) return;
+
+    cell.className="cell revealed";
+
+    // 是否踩雷
+    for(const p in bombs){
+      if(bombs[p]===idx && parseInt(p)!==currentPlayer){
+        cell.textContent="💥";
+        boomSnd.play();
+        status.textContent=玩家 ${currentPlayer} 触雷！出局！;
+        alivePlayers = alivePlayers.filter(x=>x!==currentPlayer);
+
+        if(alivePlayers.length===1){
+          status.textContent=🎉 玩家 ${alivePlayers[0]} 获胜！;
+          stage="end";
+          return;
+        }
+        nextPlayer();
+        return;
+      }
+    }
+
+    cell.textContent="✔";
+    nextPlayer();
+  }
+}
+
+function nextPlayer(){
+  const idx = alivePlayers.indexOf(currentPlayer);
+  currentPlayer = alivePlayers[(idx+1)%alivePlayers.length];
+  status.textContent=排雷阶段：玩家 ${currentPlayer};
+}
+
+init();
+</script>
+
+</body>
+</html>
